@@ -41,30 +41,6 @@ class MainWindow(QMainWindow):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        # ── Header bar ───────────────────────────────────────────────────
-        header = QFrame()
-        header.setObjectName("header")
-        header.setFixedHeight(64)
-        hlay = QHBoxLayout(header)
-        hlay.setContentsMargins(24, 0, 24, 0)
-
-        logo = QLabel("🚜")
-        logo.setStyleSheet("font-size: 28px;")
-        hlay.addWidget(logo)
-        hlay.addSpacing(10)
-
-        title = QLabel("AgriSelector")
-        title.setObjectName("title_label")
-        hlay.addWidget(title)
-        hlay.addSpacing(16)
-
-        subtitle = QLabel("— trova il trattore e le macchine agricole giuste per la tua azienda")
-        subtitle.setObjectName("subtitle_label")
-        hlay.addWidget(subtitle)
-        hlay.addStretch()
-
-        root.addWidget(header)
-
         # ── Body: sidebar + results ───────────────────────────────────────
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.setHandleWidth(1)

@@ -1,6 +1,42 @@
 """
-ui/styles.py — Application-wide QSS stylesheet.
+ui/styles.py — Application-wide QSS stylesheet and palette.
 """
+
+from PySide6.QtGui import QColor, QPalette
+from PySide6.QtCore import Qt, QEvent, QObject
+
+
+class ScrollBlocker(QObject):
+    """
+    Event filter that prevents accidental scrolling on unfocused widgets.
+    Only allows wheel events on widgets that have focus.
+    """
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.Type.Wheel:
+            # Block wheel events on any unfocused widget
+            if not obj.hasFocus():
+                return True
+        return False
+
+
+def get_light_palette():
+    """Create and return a light palette for the application."""
+    palette = QPalette()
+    palette.setColor(QPalette.ColorRole.Window, QColor("#f5f7fa"))
+    palette.setColor(QPalette.ColorRole.WindowText, QColor("#1a1a1a"))
+    palette.setColor(QPalette.ColorRole.Base, QColor("#ffffff"))
+    palette.setColor(QPalette.ColorRole.AlternateBase, QColor("#eef1f5"))
+    palette.setColor(QPalette.ColorRole.ToolTipBase, QColor("#2e7d32"))
+    palette.setColor(QPalette.ColorRole.ToolTipText, QColor("#ffffff"))
+    palette.setColor(QPalette.ColorRole.Text, QColor("#1a1a1a"))
+    palette.setColor(QPalette.ColorRole.Button, QColor("#eef1f5"))
+    palette.setColor(QPalette.ColorRole.ButtonText, QColor("#1a1a1a"))
+    palette.setColor(QPalette.ColorRole.BrightText, QColor("#ffffff"))
+    palette.setColor(QPalette.ColorRole.Link, QColor("#43a047"))
+    palette.setColor(QPalette.ColorRole.Highlight, QColor("#e8f5e9"))
+    palette.setColor(QPalette.ColorRole.HighlightedText, QColor("#1a1a1a"))
+    return palette
+
 
 APP_STYLE = """
 /* ── Palette ────────────────────────────────────────────────────────────────

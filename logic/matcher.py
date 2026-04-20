@@ -63,11 +63,6 @@ def _match_trattori(df: pd.DataFrame, f: dict) -> pd.DataFrame:
             f["trazione"], case=False, na=False
         )
 
-    # ── Hard: brand ──────────────────────────────────────────────────────
-    if f.get("marchio"):
-        mask &= df.get("Marchio", pd.Series("", index=df.index)).fillna("").str.contains(
-            f["marchio"], case=False, na=False
-        )
 
     # ── Hard: power range ────────────────────────────────────────────────
     p_min_req, p_max_req = f.get("potenza_range", (0, 600))
@@ -78,11 +73,6 @@ def _match_trattori(df: pd.DataFrame, f: dict) -> pd.DataFrame:
     power_ok = (pot_min.fillna(0) <= p_max_req) & (pot_max.fillna(9999) >= p_min_req)
     mask &= power_ok
 
-    # ── Hard: 3-point hitch category ────────────────────────────────────
-    if f.get("cat_3pt"):
-        col = "Categorie attacco a 3 punti disponibili"
-        if col in df.columns:
-            mask &= df[col].fillna("").str.contains(f["cat_3pt"], case=False, na=False)
 
     # ── Soft: turning radius ─────────────────────────────────────────────
     if "Raggio di Sterzata min (m)" in df.columns:
@@ -110,41 +100,11 @@ def _match_macchine(df: pd.DataFrame, f: dict) -> pd.DataFrame:
     mask = pd.Series(True, index=df.index)
     score_cols: list[pd.Series] = []
 
-    # ── Hard: crops ───────────────────────────────────────────────────────
-    if f.get("colture"):
-        col = "Colture di riferimento"
-        if col in df.columns:
-            mask &= _cell_contains_any(df[col], f["colture"])
-
     # ── Hard: operation type ──────────────────────────────────────────────
     if f.get("tipo_operazione"):
         col = "Tipo di operazione"
         if col in df.columns:
             mask &= _cell_contains_any(df[col], f["tipo_operazione"])
-
-    # ── Hard: machine type ────────────────────────────────────────────────
-    if f.get("tipo_macchina"):
-        col = "Tipo di macchina"
-        if col in df.columns:
-            mask &= _cell_contains_any(df[col], f["tipo_macchina"])
-
-    # ── Hard: hitch type ─────────────────────────────────────────────────
-    if f.get("attacco"):
-        col = "Attacco al trattore"
-        if col in df.columns:
-            mask &= df[col].fillna("").str.contains(f["attacco"], case=False, na=False)
-
-    # ── Hard: 3-point category ───────────────────────────────────────────
-    if f.get("cat_3pt"):
-        col = "Categoria attacco a 3 punti"
-        if col in df.columns:
-            mask &= df[col].fillna("").str.contains(f["cat_3pt"], case=False, na=False)
-
-    # ── Hard: PDP required ────────────────────────────────────────────────
-    if f.get("pdp_required"):
-        col = "PDP"
-        if col in df.columns:
-            mask &= df[col].fillna("").str.lower().isin(["sì", "si", "yes", "true", "1", "required"])
 
     # ── Hard: power compatibility ─────────────────────────────────────────
     p_min_req, p_max_req = f.get("potenza_range", (0, 600))
@@ -153,14 +113,6 @@ def _match_macchine(df: pd.DataFrame, f: dict) -> pd.DataFrame:
         pot_min_req = _numeric_col(df, "Potenza minima richiesta HP")
         mask &= pot_min_req.fillna(0) <= p_max_req  # tractor can cover minimum
 
-    # ── Hard: working width ────────────────────────────────────────────────
-    w_min_req, w_max_req = f.get("larghezza_lavoro", (0.0, 20.0))
-    if "Larghezza di lavoro min" in df.columns and "Larghezza di lavoro max" in df.columns:
-        lav_min = _numeric_col(df, "Larghezza di lavoro min")
-        lav_max = _numeric_col(df, "Larghezza di lavoro max")
-        # Machine's width range must overlap with requested range
-        width_ok = (lav_min.fillna(0) <= w_max_req) & (lav_max.fillna(999) >= w_min_req)
-        mask &= width_ok
 
     # ── Hard: transport width ─────────────────────────────────────────────
     ingombro_req = f.get("ingombro_larghezza", 3.0)
@@ -168,18 +120,6 @@ def _match_macchine(df: pd.DataFrame, f: dict) -> pd.DataFrame:
         ingombro_min = _numeric_col(df, "Ingombro larghezza min")
         mask &= ingombro_min.fillna(0) <= ingombro_req
 
-    # ── Soft: foldable ────────────────────────────────────────────────────
-    if f.get("ripiegabile") and "Ripiegabile" in df.columns:
-        ripieg = df["Ripiegabile"].fillna("").str.lower().isin(["sì", "si", "yes", "true", "1"])
-        score_cols.append(ripieg)
-
-    # ── Soft: working depth ───────────────────────────────────────────────
-    d_min_req, d_max_req = f.get("profondita", (0, 80))
-    if "Profondità di lavoro minima (cm)" in df.columns and "Profondità di lavoro massima" in df.columns:
-        prof_min = _numeric_col(df, "Profondità di lavoro minima (cm)")
-        prof_max = _numeric_col(df, "Profondità di lavoro massima")
-        depth_ok = (prof_min.fillna(0) <= d_max_req) & (prof_max.fillna(999) >= d_min_req)
-        score_cols.append(depth_ok)
 
     # ── Soft: turning radius ──────────────────────────────────────────────
     req_raggio = f.get("raggio_svolta", 15.0)
