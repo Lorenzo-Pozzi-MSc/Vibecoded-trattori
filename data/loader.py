@@ -1,12 +1,10 @@
 """
 data/loader.py — Load and lightly normalise the two Excel databases.
-Cached so the files are only read once per Streamlit session.
 """
 
 from __future__ import annotations
 from pathlib import Path
 import pandas as pd
-import streamlit as st
 
 
 # ── Locate DB files ──────────────────────────────────────────────────────────
@@ -40,16 +38,23 @@ def _normalise(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-@st.cache_data(show_spinner="Caricamento database…")
+_cache: tuple[pd.DataFrame, pd.DataFrame] | None = None
+
+
 def load_databases() -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Returns (db_trattori, db_macchine) as cleaned DataFrames.
     Raises FileNotFoundError with a helpful message if files are missing.
     """
+    global _cache
+    if _cache is not None:
+        return _cache
+
     path_trattori = _resolve(_DB_TRATTORI, _DB_TRATTORI_ALT)
     path_macchine  = _resolve(_DB_MACCHINE,  _DB_MACCHINE_ALT)
 
     df_trattori = _normalise(pd.read_excel(path_trattori))
     df_macchine  = _normalise(pd.read_excel(path_macchine))
 
-    return df_trattori, df_macchine
+    _cache = (df_trattori, df_macchine)
+    return _cache
