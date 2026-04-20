@@ -14,23 +14,8 @@ from PySide6.QtCore import Qt, QThread, Signal, QObject
 from ui.styles import APP_STYLE
 from ui.filter_panel import FilterPanel
 from ui.results_panel import ResultsPanel
+from ui.match_worker import MatchWorker
 from logic.matcher import run_matching
-
-
-# ── Background worker so the UI doesn't freeze on large DBs ──────────────────
-
-class MatchWorker(QObject):
-    finished = Signal(dict)
-
-    def __init__(self, db_t, db_m, filters):
-        super().__init__()
-        self._db_t = db_t
-        self._db_m = db_m
-        self._filters = filters
-
-    def run(self):
-        results = run_matching(self._db_t, self._db_m, self._filters)
-        self.finished.emit(results)
 
 
 # ── Main window ───────────────────────────────────────────────────────────────

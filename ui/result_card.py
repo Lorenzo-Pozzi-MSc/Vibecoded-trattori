@@ -1,0 +1,73 @@
+"""
+ui/result_card.py — Individual result card widget.
+"""
+
+import webbrowser
+from PySide6.QtWidgets import (
+    QFrame, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
+)
+from PySide6.QtCore import Qt
+
+
+class ResultCard(QFrame):
+    """A single result card displaying tractor or implement info."""
+
+    def __init__(self, title: str, brand: str, tags: list[tuple[str, bool]],
+                 score: int | None, link: str | None, accent: str = "#1f3d1a",
+                 parent=None):
+        super().__init__(parent)
+        self.setObjectName("card")
+        self.setFrameShape(QFrame.Shape.StyledPanel)
+
+        # Left accent bar
+        self.setStyleSheet(
+            f"QFrame#card {{ border-left: 4px solid {accent}; }}"
+        )
+
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(14, 12, 14, 12)
+        lay.setSpacing(4)
+
+        # Title row
+        title_row = QHBoxLayout()
+        title_lbl = QLabel(title)
+        title_lbl.setObjectName("card_title")
+        font = title_lbl.font()
+        font.setPointSize(12)
+        font.setBold(True)
+        title_lbl.setFont(font)
+        title_row.addWidget(title_lbl)
+        title_row.addStretch()
+        if score is not None:
+            score_lbl = QLabel(f"✓ {score}%")
+            score_lbl.setObjectName("score_badge")
+            title_row.addWidget(score_lbl)
+        lay.addLayout(title_row)
+
+        # Brand
+        if brand:
+            brand_lbl = QLabel(brand.upper())
+            brand_lbl.setObjectName("card_brand")
+            font2 = brand_lbl.font()
+            font2.setPointSize(9)
+            brand_lbl.setFont(font2)
+            lay.addWidget(brand_lbl)
+
+        # Tags row
+        if tags:
+            from ui.helpers import tag
+            tag_row = QHBoxLayout()
+            tag_row.setSpacing(5)
+            tag_row.setContentsMargins(0, 4, 0, 0)
+            for text, earth in tags:
+                tag_row.addWidget(tag(text, earth))
+            tag_row.addStretch()
+            lay.addLayout(tag_row)
+
+        # Link
+        if link and str(link).startswith("http"):
+            btn = QPushButton("↗ Scheda tecnica")
+            btn.setObjectName("link_btn")
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.clicked.connect(lambda: webbrowser.open(link))
+            lay.addWidget(btn)
