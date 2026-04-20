@@ -1,62 +1,41 @@
 """
 AgriSelector — Tractor & Implement Matching Tool
-Entry point. Run with: streamlit run app.py
+Run with:  python app.py
 """
 
-import streamlit as st
+import sys
 from pathlib import Path
 
-# ── Page config (must be first Streamlit call) ──────────────────────────────
-st.set_page_config(
-    page_title="AgriSelector",
-    page_icon="🚜",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
+from PySide6.QtWidgets import QApplication
+from PySide6.QtGui import QFontDatabase, QFont
+from PySide6.QtCore import Qt
 
-# ── Local imports ────────────────────────────────────────────────────────────
-from ui.styles import inject_css
-from ui.sidebar import render_sidebar
-from ui.results import render_results
 from data.loader import load_databases
-from logic.matcher import run_matching
+from ui.main_window import MainWindow
 
-# ── Boot ─────────────────────────────────────────────────────────────────────
-inject_css()
 
-# ── Load data (cached) ───────────────────────────────────────────────────────
-db_trattori, db_macchine = load_databases()
+def main():
+    app = QApplication(sys.argv)
+    app.setApplicationName("AgriSelector")
+    app.setAttribute(Qt.ApplicationAttribute.AA_UseHighDpiPixmaps)
 
-# ── Sidebar: user inputs ─────────────────────────────────────────────────────
-filters = render_sidebar(db_trattori, db_macchine)
+    # ── Load data ────────────────────────────────────────────────────────
+    try:
+        db_trattori, db_macchine = load_databases()
+    except FileNotFoundError as e:
+        from PySide6.QtWidgets import QMessageBox
+        msg = QMessageBox()
+        msg.setWindowTitle("Database non trovato")
+        msg.setText(str(e))
+        msg.setIcon(QMessageBox.Icon.Critical)
+        msg.exec()
+        sys.exit(1)
 
-# ── Main area header ─────────────────────────────────────────────────────────
-col_logo, col_title = st.columns([1, 6])
-with col_logo:
-    st.markdown("<div class='logo'>🚜</div>", unsafe_allow_html=True)
-with col_title:
-    st.markdown("<h1 class='main-title'>AgriSelector</h1>", unsafe_allow_html=True)
-    st.markdown(
-        "<p class='main-subtitle'>Trova il trattore e le macchine agricole giusti per la tua azienda</p>",
-        unsafe_allow_html=True,
-    )
+    # ── Launch window ─────────────────────────────────────────────────────
+    window = MainWindow(db_trattori, db_macchine)
+    window.show()
+    sys.exit(app.exec())
 
-st.markdown("<hr class='divider'/>", unsafe_allow_html=True)
 
-# ── Run matching & render results ────────────────────────────────────────────
-if filters.get("search_triggered"):
-    with st.spinner("Analisi in corso…"):
-        results = run_matching(db_trattori, db_macchine, filters)
-    render_results(results, filters)
-else:
-    st.markdown(
-        """
-        <div class='empty-state'>
-            <span class='empty-icon'>🌾</span>
-            <h3>Imposta i tuoi criteri nel pannello laterale</h3>
-            <p>Seleziona coltura, tipo di operazione e parametri del terreno,<br>
-            poi clicca <strong>Cerca</strong> per trovare i mezzi più adatti.</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+if __name__ == "__main__":
+    main()
