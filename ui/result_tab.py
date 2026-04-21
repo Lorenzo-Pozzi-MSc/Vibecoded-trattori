@@ -1,5 +1,11 @@
 """
-ui/result_tab.py — Individual result tab with card/table view toggle.
+ui/result_tab.py — A single results tab (tractors or machines)
+
+Each result tab can display search results in two different ways:
+  1. Card view: Pretty visual cards with key information (default)
+  2. Table view: Detailed spreadsheet showing all columns
+
+You can switch between these views with buttons at the top of the tab.
 """
 
 import pandas as pd
@@ -14,10 +20,25 @@ from ui.result_card import ResultCard
 
 
 class ResultTab(QWidget):
-    """A tab displaying results with card/table view toggle."""
+    """
+    A single results tab displaying tractors or machines.
+    
+    Features:
+    - Shows results as cards or table (you can toggle with buttons)
+    - Displays the number of results found
+    - Shows an "empty state" message if no results
+    - Automatically selects relevant info to display for each type
+    """
 
     def __init__(self, is_tractor: bool = True, parent=None):
         super().__init__(parent)
+        """
+        Create a results tab.
+        
+        Args:
+            is_tractor: True if this tab is for tractors, False if for machines
+                       This affects which fields are displayed and the accent color
+        """
         self._is_tractor = is_tractor
         self._accent = "#1f3d1a" if is_tractor else "#8b6340"
 
@@ -72,13 +93,29 @@ class ResultTab(QWidget):
         self.empty_label.hide()
 
     def _switch(self, idx: int):
-        """Switch between card and table views."""
+        """
+        Switch between card and table views.
+        
+        Args:
+            idx: 0 for card view, 1 for table view
+        """
         self.stack.setCurrentIndex(idx)
         self.btn_cards.setChecked(idx == 0)
         self.btn_table.setChecked(idx == 1)
 
     def load(self, df: pd.DataFrame):
-        """Load results from a DataFrame."""
+        """
+        Display search results from a data table.
+        
+        This method:
+        1. Shows the result count
+        2. Creates cards from each result
+        3. Loads the data into the table view
+        4. Shows empty state if no results
+        
+        Args:
+            df: A pandas DataFrame containing the search results
+        """
         if df.empty:
             self.stack.hide()
             self.empty_label.show()
@@ -101,7 +138,18 @@ class ResultTab(QWidget):
         self.table_view.load(df)
 
     def _extract(self, row: pd.Series):
-        """Extract displayable fields from a result row."""
+        """
+        Pull out the important fields from a result row to display.
+        
+        This method selects which database columns to show and formats them nicely
+        for display on a result card. Different fields are shown for tractors vs machines.
+        
+        Args:
+            row: A single result row from the database
+        
+        Returns:
+            A tuple of (title, brand, tags, score, link) ready for display
+        """
         score_val = row.get("_score")
         score = int(score_val) if pd.notna(score_val) else None
 

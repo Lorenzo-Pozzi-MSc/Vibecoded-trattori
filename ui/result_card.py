@@ -1,5 +1,12 @@
 """
-ui/result_card.py — Individual result card widget.
+ui/result_card.py — A single result card
+
+Each result (tractor or machine) is displayed as an attractive card showing:
+  - The name/model
+  - The brand/manufacturer
+  - Key specs (power, width, traction, etc.) as small tags
+  - A compatibility score (0-100%)
+  - A link to the technical sheet if available
 """
 
 import webbrowser
@@ -10,12 +17,34 @@ from PySide6.QtCore import Qt
 
 
 class ResultCard(QFrame):
-    """A single result card displaying tractor or implement info."""
+    """
+    A visual card displaying a single tractor or machine result.
+    
+    Shows:
+    - Product name/model at the top
+    - Brand name
+    - Key specifications as colored tags
+    - Match score (percentage) showing how well it matches your criteria
+    - A link button to the technical sheet if available
+    
+    Has a colored accent bar on the left (green for tractors, brown for machines).
+    """
 
     def __init__(self, title: str, brand: str, tags: list[tuple[str, bool]],
                  score: int | None, link: str | None, accent: str = "#1f3d1a",
                  parent=None):
         super().__init__(parent)
+        """
+        Create a result card.
+        
+        Args:
+            title: The product name/model
+            brand: The manufacturer/brand name
+            tags: List of (tag_text, is_special) tuples showing specs
+            score: Match percentage (0-100) or None
+            link: URL to technical sheet or None
+            accent: Color code for the left accent bar
+        """
         self.setObjectName("card")
         self.setFrameShape(QFrame.Shape.StyledPanel)
 

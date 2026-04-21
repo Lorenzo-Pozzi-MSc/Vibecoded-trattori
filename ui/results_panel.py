@@ -1,6 +1,13 @@
 """
-ui/results_panel.py — Tabbed results area showing tractors and implements.
-Supports both a card view (scrollable) and a table view.
+ui/results_panel.py — The right-side panel showing search results
+
+When you search, this shows:
+  1. A tab for matching tractors (with count)
+  2. A tab for matching machines (with count)
+
+Each tab shows results two ways:
+  - As attractive cards (default)
+  - As a detailed table (if you click the "Table" button)
 """
 
 from __future__ import annotations
@@ -13,6 +20,18 @@ from PySide6.QtWidgets import (
 from ui.result_tab import ResultTab
 
 class ResultsPanel(QWidget):
+    """
+    The right side of the window showing search results.
+    
+    Contains two tabs:
+    - "Tractors" tab: Shows matching tractors
+    - "Machines" tab: Shows matching implements/machines
+    
+    Each tab can display results as:
+    - Cards: Pretty visual cards with key info
+    - Table: Detailed spreadsheet-like view
+    """
+    
     def __init__(self, parent=None):
         super().__init__(parent)
         lay = QVBoxLayout(self)
@@ -30,10 +49,26 @@ class ResultsPanel(QWidget):
         self._show_welcome()
 
     def _show_welcome(self):
+        """
+        Display the initial message asking user to set filters and search.
+        
+        This message appears before any search is performed.
+        """
         self.tab_trattori.count_label.setText("Imposta i filtri e clicca Cerca")
         self.tab_macchine.count_label.setText("Imposta i filtri e clicca Cerca")
 
     def load_results(self, results: dict):
+        """
+        Display search results in the tabs.
+        
+        This method:
+        1. Puts tractors in the Tractors tab and machines in the Machines tab
+        2. Shows the count of results found
+        3. Automatically switches to whichever tab has more results
+        
+        Args:
+            results: Dictionary containing 'trattori' and 'macchine' lists
+        """
         self.tab_trattori.load(results.get("trattori", pd.DataFrame()))
         self.tab_macchine.load(results.get("macchine", pd.DataFrame()))
         # Switch to the tab with more results

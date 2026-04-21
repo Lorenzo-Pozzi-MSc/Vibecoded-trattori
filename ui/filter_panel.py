@@ -1,6 +1,15 @@
 """
-ui/filter_panel.py — Left-hand sidebar with all filter controls.
-Emits `search_requested` signal with a filters dict when the user clicks Search.
+ui/filter_panel.py — The search settings sidebar on the left
+
+This is where you set your search criteria:
+  - What type of operation you're doing
+  - What traction type you need
+  - Tractor power range (in CV - cavalli vapore, or horsepower)
+  - Minimum working width needed
+  - Maximum turning radius allowed
+
+When you click Search, this panel sends all your choices to the matching engine.
+When you click Reset, it clears all your choices back to defaults.
 """
 
 from __future__ import annotations
@@ -22,6 +31,20 @@ from ui.helpers import unique_sorted, section_label, field_label
 # ── Main filter panel ─────────────────────────────────────────────────────────
 
 class FilterPanel(QFrame):
+    """
+    The left sidebar where you set search criteria.
+    
+    Contains controls for:
+    - Operation type (plowing, harvesting, etc.)
+    - Traction type (2WD, 4WD, tracks)
+    - Tractor power range
+    - Maximum working width
+    - Maximum turning radius
+    
+    When you click Search, it collects all your choices and sends them
+    to the matching engine.
+    """
+    
     search_requested = Signal(dict)
 
     def __init__(self, db_trattori: pd.DataFrame, db_macchine: pd.DataFrame, parent=None):
@@ -30,9 +53,24 @@ class FilterPanel(QFrame):
         self.setFixedWidth(290)
         self._db_t = db_trattori
         self._db_m = db_macchine
+        """
+        Create the filter panel with all search options.
+        
+        Reads the tractor and machine databases to populate the filter options
+        with real choices from your data.
+        """
         self._build_ui()
 
     def _build_ui(self):
+        """
+        Construct all the visual controls in the filter panel.
+        
+        Creates and arranges:
+        - Section headers
+        - Checkboxes and dropdowns for filter options
+        - Search and Reset buttons
+        - A scroll area so everything fits even on small screens
+        """
         # Outer layout holds a scroll area so it works on small screens
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -138,6 +176,12 @@ class FilterPanel(QFrame):
     # ── Collect & emit ────────────────────────────────────────────────────────
 
     def _emit_search(self):
+        """
+        Collect all your filter choices and send them to the search engine.
+        
+        This gets called when you click the Search button.
+        It gathers all the values you've selected and sends them as a signal.
+        """
         filters = {
             "tipo_operazione":  self.w_tipo_op.selected_values(),
             "trazione":         self.w_trazione.selected_values(),

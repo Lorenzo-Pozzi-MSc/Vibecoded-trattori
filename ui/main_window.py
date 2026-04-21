@@ -1,5 +1,9 @@
 """
-ui/main_window.py — Top-level application window.
+ui/main_window.py — The main application window
+
+This is what you see when you open the app. It has two main areas:
+  1. Left side: Filter panel where you set your search criteria
+  2. Right side: Results panel that shows matching tractors and machines
 """
 
 from __future__ import annotations
@@ -21,6 +25,18 @@ from logic.matcher import run_matching
 # ── Main window ───────────────────────────────────────────────────────────────
 
 class MainWindow(QMainWindow):
+    """
+    The main application window that displays the search interface.
+    
+    This window contains:
+    - A filter panel on the left (where you set your search criteria)
+    - A results panel on the right (where search results are shown)
+    - A status bar at the bottom (showing current status messages)
+    
+    When you adjust filters and click Search, this window coordinates
+    the search and displays the results.
+    """
+    
     def __init__(self, db_trattori: pd.DataFrame, db_macchine: pd.DataFrame):
         super().__init__()
         self._db_t = db_trattori
@@ -35,6 +51,15 @@ class MainWindow(QMainWindow):
         self._build_ui()
 
     def _build_ui(self):
+        """
+        Construct the visual layout of the window.
+        
+        This creates:
+        1. A left sidebar with the filter panel
+        2. A right panel for results
+        3. A status bar at the bottom
+        4. Proper sizing and spacing
+        """
         central = QWidget()
         self.setCentralWidget(central)
         root = QVBoxLayout(central)
@@ -68,6 +93,15 @@ class MainWindow(QMainWindow):
     # ── Search handler ────────────────────────────────────────────────────────
 
     def _on_search(self, filters: dict):
+        """
+        Handle when the user clicks the Search button.
+        
+        This method:
+        1. Shows "Searching..." in the status bar
+        2. Disables the Search button (so you can't click it again while searching)
+        3. Creates a background worker to run the search
+        4. Waits for results without freezing the window
+        """
         self.statusBar().showMessage("Ricerca in corso…")
         self.filter_panel.btn_search.setEnabled(False)
 
@@ -80,6 +114,14 @@ class MainWindow(QMainWindow):
         self._thread.start()
 
     def _on_results(self, results: dict):
+        """
+        Display the search results when they're ready.
+        
+        This method:
+        1. Shows the matching tractors and machines in the results panel
+        2. Re-enables the Search button so you can search again
+        3. Updates the status bar to show how many matches were found
+        """
         self.results_panel.load_results(results)
         self.filter_panel.btn_search.setEnabled(True)
 

@@ -1,5 +1,15 @@
 """
-ui/styles.py — Application-wide QSS stylesheet and palette.
+ui/styles.py — Application styling and theming
+
+Defines:
+  - The light color palette (greens, grays, whites)
+  - CSS-like styling for all UI elements (buttons, inputs, etc.)
+  - An event filter to prevent accidental scrolling on unfocused widgets
+
+The overall design uses:
+  - Green accents for tractors
+  - Brown accents for implements
+  - A light, modern, agricultural-friendly aesthetic
 """
 
 from PySide6.QtGui import QColor, QPalette
@@ -8,10 +18,25 @@ from PySide6.QtCore import Qt, QEvent, QObject
 
 class ScrollBlocker(QObject):
     """
-    Event filter that prevents accidental scrolling on unfocused widgets.
-    Only allows wheel events on widgets that have focus.
+    Prevents accidental mouse wheel scrolling on unfocused widgets.
+    
+    When you hover your mouse over a list or scrollable area but haven't
+    clicked it, don't let the scroll wheel scroll it. This prevents
+    accidental scrolling when you're trying to interact with something else.
+    
+    Works by filtering wheel events and only allowing them on focused widgets.
     """
     def eventFilter(self, obj, event):
+        """
+        Check mouse wheel events and block them on unfocused widgets.
+        
+        Args:
+            obj: The widget that received the event
+            event: The event (wheel, click, etc.)
+        
+        Returns:
+            True if the event should be blocked, False to allow it
+        """
         if event.type() == QEvent.Type.Wheel:
             # Block wheel events on any unfocused widget
             if not obj.hasFocus():
@@ -20,7 +45,18 @@ class ScrollBlocker(QObject):
 
 
 def get_light_palette():
-    """Create and return a light palette for the application."""
+    """
+    Create and return the application's color palette.
+    
+    Sets up all the colors used throughout the app:
+    - Background colors (light grays, whites)
+    - Text colors (dark grays, blacks)
+    - Accent colors (greens for tractors, etc.)
+    - Special colors for highlights and tooltips
+    
+    Returns:
+        A QPalette object with all the colors defined
+    """
     palette = QPalette()
     palette.setColor(QPalette.ColorRole.Window, QColor("#f5f7fa"))
     palette.setColor(QPalette.ColorRole.WindowText, QColor("#1a1a1a"))
@@ -38,6 +74,7 @@ def get_light_palette():
     return palette
 
 
+# CSS-like styling for all visual elements
 APP_STYLE = """
 /* ── Palette ────────────────────────────────────────────────────────────────
    --white       : #ffffff
