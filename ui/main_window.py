@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QThread, Signal, QObject
 
+from data.models import TractorDatabase, MachineDatabase
 from ui.styles import APP_STYLE
 from ui.filter_panel import FilterPanel
 from ui.results_panel import ResultsPanel
@@ -37,10 +38,15 @@ class MainWindow(QMainWindow):
     the search and displays the results.
     """
     
-    def __init__(self, db_trattori: pd.DataFrame, db_macchine: pd.DataFrame):
+    def __init__(self, tractor_db: TractorDatabase, machine_db: MachineDatabase):
         super().__init__()
-        self._db_t = db_trattori
-        self._db_m = db_macchine
+        # Store database objects for potential future use
+        self._tractor_db = tractor_db
+        self._machine_db = machine_db
+        
+        # Extract DataFrames for the UI and matcher
+        self._db_t = tractor_db.dataframe
+        self._db_m = machine_db.dataframe
         self._thread = None
 
         self.setWindowTitle("AgriSelector 🚜")

@@ -122,9 +122,9 @@ def _match_trattori(df: pd.DataFrame, f: dict) -> pd.DataFrame:
 
     # ── Hard: traction ───────────────────────────────────────────────────
     if f.get("trazione"):
-        mask &= df.get("Trazione", pd.Series("", index=df.index)).fillna("").str.contains(
-            f["trazione"], case=False, na=False
-        )
+        col = "Trazione"
+        if col in df.columns:
+            mask &= _cell_contains_any(df[col], f["trazione"])
 
 
     # ── Hard: power range ────────────────────────────────────────────────

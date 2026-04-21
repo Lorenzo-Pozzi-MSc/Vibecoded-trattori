@@ -235,6 +235,36 @@ QPushButton#search_btn {
     min-height: 38px;
 }
 
+/* ── Help icon button ────────────────────────────────────────────────────── */
+QPushButton#help_icon_btn {
+    background-color: #43a047;
+    color: #ffffff;
+    border: none;
+    border-radius: 9px;
+    font-weight: 700;
+    font-size: 11px;
+    padding: 0px;
+}
+
+QPushButton#help_icon_btn:hover {
+    background-color: #2e7d32;
+}
+
+QPushButton#help_icon_btn:pressed {
+    background-color: #1b5e20;
+}
+
+/* ── Tooltip styling with better contrast ───────────────────────────────── */
+QToolTip {
+    background-color: #2e7d32;
+    color: #ffffff;
+    border: 2px solid #1b5e20;
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
 QPushButton#search_btn:hover {
     background-color: #43a047;
 }

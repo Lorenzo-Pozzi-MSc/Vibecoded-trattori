@@ -13,6 +13,7 @@ When you click Reset, it clears all your choices back to defaults.
 """
 
 from __future__ import annotations
+import webbrowser
 import pandas as pd
 
 from PySide6.QtWidgets import (
@@ -116,13 +117,16 @@ class FilterPanel(QFrame):
         trazione_label_lay.setSpacing(4)
         trazione_label_lay.addWidget(field_label("Trazione"))
         
-        help_icon = QLabel("?")
-        help_icon.setStyleSheet("color: #43a047; font-weight: bold; font-size: 12px;")
-        help_icon.setToolTip(
-            "Verificare le pendenze del sito e le necessità di trazione qui:<br>"
-            "<a href='https://spisal.aulss9.veneto.it/mys/apridoc/iddoc/7359'>Accedi al sito</a>"
+        # Help icon - clickable to open link
+        help_btn = QPushButton("?")
+        help_btn.setObjectName("help_icon_btn")
+        help_btn.setFixedSize(18, 18)
+        help_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        help_btn.setToolTip("Click to check traction requirements for site slopes")
+        help_btn.clicked.connect(
+            lambda: webbrowser.open("https://spisal.aulss9.veneto.it/mys/apridoc/iddoc/7359")
         )
-        trazione_label_lay.addWidget(help_icon)
+        trazione_label_lay.addWidget(help_btn)
         trazione_label_lay.addStretch()
         
         lay.addLayout(trazione_label_lay)

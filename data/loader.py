@@ -5,14 +5,16 @@ This module reads two Excel files:
   1. "DB trattori.xlsx" - contains a list of available tractors with their specs
   2. "DB macchine.xlsx" - contains a list of implements/machines with their specs
 
-It cleans up the data (removes extra spaces, handles missing values) so that
-the matching logic can work smoothly. The data is cached so if you load it
-multiple times, it doesn't read the file again.
+It cleans up the data (removes extra spaces, handles missing values) and creates
+structured data models from the raw Excel data. The databases are cached so if you 
+load them multiple times, it doesn't read the file again.
 """
 
 from __future__ import annotations
 from pathlib import Path
 import pandas as pd
+
+from data.models import Tractor, Machine, TractorDatabase, MachineDatabase
 
 
 # ── Locate DB files ──────────────────────────────────────────────────────────
@@ -77,10 +79,94 @@ def _normalise(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-_cache: tuple[pd.DataFrame, pd.DataFrame] | None = None
+_cache: tuple[TractorDatabase, MachineDatabase] | None = None
 
 
-def load_databases() -> tuple[pd.DataFrame, pd.DataFrame]:
+def _float_or_none(val) -> float | None:
+    """
+    Safely convert a value to float, returning None if it can't be converted.
+    Handles commas as decimal separators (European format).
+    """
+    if pd.isna(val) or str(val).strip().lower() in ("nan", "na", ""):
+        return None
+    try:
+        return float(str(val).replace(",", ".").strip())
+    except (ValueError, TypeError):
+        return None
+
+
+def _bool_or_false(val) -> bool:
+    """
+    Safely convert a value to boolean.
+    Accepts "sì", "si", "yes", "true", "1" as True.
+    """
+    if pd.isna(val):
+        return False
+    val_str = str(val).strip().lower()
+    return val_str in ("sì", "si", "yes", "true", "1")
+
+
+def _string_or_empty(val) -> str:
+    """Safely convert a value to string, returning empty string for None/NaN."""
+    if pd.isna(val):
+        return ""
+    return str(val).strip()
+
+
+def _create_tractors(df: pd.DataFrame) -> list[Tractor]:
+    """
+    Create Tractor model instances from a DataFrame.
+    
+    Parses each row and creates a Tractor object with properly typed fields.
+    """
+    tractors = []
+    for _, row in df.iterrows():
+        tractor = Tractor(
+            name=_string_or_empty(row.get("Nome serie/modello", "")),
+            brand=_string_or_empty(row.get("Marchio", "")),
+            traction_type=_string_or_empty(row.get("Trazione", "")),
+            power_min_cv=_float_or_none(row.get("Pot. min (CV)")),
+            power_max_cv=_float_or_none(row.get("Pot. max (CV)")),
+            turning_radius_m=_float_or_none(row.get("Raggio di Sterzata min (m)")),
+            attachment_categories=_string_or_empty(row.get("Categorie attacco a 3 punti disponibili", "")),
+            pto_speeds=_string_or_empty(row.get("Regimi PDP disponibili", "")),
+            link=_string_or_empty(row.get("link", "")),
+            raw_data=row.to_dict(),
+        )
+        if tractor.name:  # Only add if name is not empty
+            tractors.append(tractor)
+    return tractors
+
+
+def _create_machines(df: pd.DataFrame) -> list[Machine]:
+    """
+    Create Machine model instances from a DataFrame.
+    
+    Parses each row and creates a Machine object with properly typed fields.
+    """
+    machines = []
+    for _, row in df.iterrows():
+        machine = Machine(
+            name=_string_or_empty(row.get("Nome", "")),
+            manufacturer=_string_or_empty(row.get("Produttore", "")),
+            operation_type=_string_or_empty(row.get("Tipo di operazione", "")),
+            machine_type=_string_or_empty(row.get("Tipo di macchina", "")),
+            min_power_required_hp=_float_or_none(row.get("Potenza minima richiesta HP")),
+            max_power_recommended_hp=_float_or_none(row.get("Potenza massima consigliata HP")),
+            min_work_width_m=_float_or_none(row.get("Larghezza di lavoro min")),
+            max_work_width_m=_float_or_none(row.get("Larghezza di lavoro max")),
+            min_turning_radius_m=_float_or_none(row.get("Raggio di svolta min")),
+            attachment_type=_string_or_empty(row.get("Attacco al trattore", "")),
+            is_foldable=_bool_or_false(row.get("Ripiegabile", False)),
+            technical_sheet_url=_string_or_empty(row.get("URL scheda tecnica produttore/fonte", "")),
+            raw_data=row.to_dict(),
+        )
+        if machine.name:  # Only add if name is not empty
+            machines.append(machine)
+    return machines
+
+
+def load_databases() -> tuple[TractorDatabase, MachineDatabase]:
     """
     Load and prepare both the tractor and implement databases.
     
@@ -88,11 +174,13 @@ def load_databases() -> tuple[pd.DataFrame, pd.DataFrame]:
     - Finds the two Excel files (tractors and implements)
     - Reads them into data tables
     - Cleans them up (removes spaces, fixes formatting)
-    - Remembers them so future calls are fast
+    - Creates structured Tractor and Machine model instances
+    - Returns database containers with both models and raw DataFrames
+    - Caches the result so future calls are fast
     
     Returns:
-        A pair of tables: (tractors_table, implements_table)
-        Each table is a spreadsheet-like structure with rows and columns
+        A pair of databases: (tractor_database, machine_database)
+        Each provides both type-safe model access and DataFrame access
     
     Raises:
         FileNotFoundError: If the Excel files can't be found
@@ -107,5 +195,13 @@ def load_databases() -> tuple[pd.DataFrame, pd.DataFrame]:
     df_trattori = _normalise(pd.read_excel(path_trattori))
     df_macchine  = _normalise(pd.read_excel(path_macchine))
 
-    _cache = (df_trattori, df_macchine)
+    # Create model instances
+    tractors = _create_tractors(df_trattori)
+    machines = _create_machines(df_macchine)
+    
+    # Create database containers
+    tractor_db = TractorDatabase(tractors, df_trattori)
+    machine_db = MachineDatabase(machines, df_macchine)
+
+    _cache = (tractor_db, machine_db)
     return _cache

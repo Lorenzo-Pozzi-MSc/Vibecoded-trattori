@@ -27,6 +27,22 @@ from ui.main_window import MainWindow
 from ui.styles import get_light_palette, ScrollBlocker
 
 
+def _cleanup_pycache():
+    """
+    Remove all __pycache__ directories from the project.
+    
+    Called when the app exits to keep the workspace clean.
+    """
+    import shutil
+    root = Path(__file__).parent
+    for cache_dir in root.rglob("__pycache__"):
+        try:
+            shutil.rmtree(cache_dir)
+        except Exception as e:
+            # Silently fail - this is just cleanup
+            pass
+
+
 def main():
     """
     Start the application and show the main window.
@@ -50,7 +66,7 @@ def main():
 
     # ── Load data ────────────────────────────────────────────────────────
     try:
-        db_trattori, db_macchine = load_databases()
+        tractor_db, machine_db = load_databases()
     except FileNotFoundError as e:
         from PySide6.QtWidgets import QMessageBox
         msg = QMessageBox()
@@ -61,7 +77,7 @@ def main():
         sys.exit(1)
 
     # ── Launch window ─────────────────────────────────────────────────────
-    window = MainWindow(db_trattori, db_macchine)
+    window = MainWindow(tractor_db, machine_db)
     window.show()
     sys.exit(app.exec())
 
