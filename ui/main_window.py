@@ -38,7 +38,7 @@ class MainWindow(QMainWindow):
     the search and displays the results.
     """
     
-    def __init__(self, tractor_db: TractorDatabase, machine_db: MachineDatabase):
+    def __init__(self, tractor_db: TractorDatabase, machine_db: MachineDatabase, on_close=None):
         super().__init__()
         # Store database objects for potential future use
         self._tractor_db = tractor_db
@@ -48,6 +48,7 @@ class MainWindow(QMainWindow):
         self._db_t = tractor_db.dataframe
         self._db_m = machine_db.dataframe
         self._thread = None
+        self._on_close = on_close
 
         self.setWindowTitle("AgriSelector 🚜")
         self.resize(1280, 820)
@@ -78,6 +79,7 @@ class MainWindow(QMainWindow):
 
         self.filter_panel = FilterPanel(self._db_t, self._db_m)
         self.filter_panel.search_requested.connect(self._on_search)
+        self.filter_panel.reset_requested.connect(self._on_reset)
         splitter.addWidget(self.filter_panel)
 
         self.results_panel = ResultsPanel()
@@ -136,3 +138,20 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(
             f"Trovati {n_t} trattori e {n_m} macchine compatibili."
         )
+
+    def _on_reset(self):
+        """
+        Handle when the user clicks the Reset button.
+        
+        This clears all results and returns to the welcome state.
+        """
+        self.results_panel._show_welcome()
+        self.statusBar().showMessage("Pronto — imposta i filtri e clicca Cerca.")
+
+    def closeEvent(self, event):
+        """
+        Handle window close event and run cleanup.
+        """
+        if self._on_close:
+            self._on_close()
+        super().closeEvent(event)

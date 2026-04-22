@@ -77,7 +77,7 @@ def main():
         sys.exit(1)
 
     # ── Launch window ─────────────────────────────────────────────────────
-    window = MainWindow(tractor_db, machine_db)
+    window = MainWindow(tractor_db, machine_db, on_close=_cleanup_pycache)
     window.show()
     sys.exit(app.exec())
 

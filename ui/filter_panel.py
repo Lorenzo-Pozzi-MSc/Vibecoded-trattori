@@ -47,6 +47,7 @@ class FilterPanel(QFrame):
     """
     
     search_requested = Signal(dict)
+    reset_requested = Signal()
 
     def __init__(self, db_trattori: pd.DataFrame, db_macchine: pd.DataFrame, parent=None):
         super().__init__(parent)
@@ -201,3 +202,4 @@ class FilterPanel(QFrame):
         self.w_potenza.reset(40, 200)
         self.w_ingombro.setValue(3.0)
         self.w_raggio.setValue(8.0)
+        self.reset_requested.emit()
