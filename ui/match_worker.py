@@ -42,17 +42,17 @@ class MatchWorker(QObject):
         Apply all filter criteria to the tractors DataFrame.
         
         Supported filters:
-        - operation_type: str or list of operation types
-        - traction: str or list of traction types
-        - power_range: tuple (min_cv, max_cv)
-        - work_width_range: tuple (min_m, max_m)
-        - turning_radius_range: tuple (min_m, max_m)
+        - tipo_operazione: str or list of operation types
+        - trazione: str or list of traction types
+        - potenza_range: tuple (min_cv, max_cv)
+        - ingombro_larghezza: max width in meters
+        - raggio_svolta: max turning radius in meters
         """
         result = df.copy()
         
         # Filter by operation type (if specified)
-        if "operation_type" in filters and filters["operation_type"]:
-            ops = filters["operation_type"]
+        if "tipo_operazione" in filters and filters["tipo_operazione"]:
+            ops = filters["tipo_operazione"]
             if isinstance(ops, str):
                 ops = [ops]
             # Note: For tractors, operation filtering would typically be done
@@ -60,32 +60,30 @@ class MatchWorker(QObject):
             # This is a placeholder for now
         
         # Filter by traction type (if specified)
-        if "traction" in filters and filters["traction"]:
-            tractions = filters["traction"]
+        if "trazione" in filters and filters["trazione"]:
+            tractions = filters["trazione"]
             if isinstance(tractions, str):
                 tractions = [tractions]
             result = result[result.get("Trazione", "").isin(tractions)]
         
         # Filter by power range (if specified)
-        if "power_range" in filters and filters["power_range"]:
-            min_power, max_power = filters["power_range"]
+        if "potenza_range" in filters and filters["potenza_range"]:
+            min_power, max_power = filters["potenza_range"]
             if min_power is not None:
-                # Check if tractor's max power is >= min requirement
-                result = result[result.get("Pot. max (CV)", 0) >= min_power]
+                # Check if tractor's min power is >= requested min
+                result = result[result.get("Pot. min (CV)", 0) >= min_power]
             if max_power is not None:
-                # Check if tractor's min power is <= max requirement
-                result = result[result.get("Pot. min (CV)", float('inf')) <= max_power]
+                # Check if tractor's max power is <= requested max
+                result = result[result.get("Pot. max (CV)", float('inf')) <= max_power]
         
         # Filter by work width (if specified)
-        if "work_width_range" in filters and filters["work_width_range"]:
-            min_width, max_width = filters["work_width_range"]
+        if "ingombro_larghezza" in filters and filters["ingombro_larghezza"]:
+            max_width = filters["ingombro_larghezza"]
             # Note: Tractors don't typically have work width, skip this
         
         # Filter by turning radius (if specified)
-        if "turning_radius_range" in filters and filters["turning_radius_range"]:
-            min_radius, max_radius = filters["turning_radius_range"]
-            if min_radius is not None:
-                result = result[result.get("Raggio di Sterzata min (m)", 0) >= min_radius]
+        if "raggio_svolta" in filters and filters["raggio_svolta"]:
+            max_radius = filters["raggio_svolta"]
             if max_radius is not None:
                 result = result[result.get("Raggio di Sterzata min (m)", float('inf')) <= max_radius]
         
