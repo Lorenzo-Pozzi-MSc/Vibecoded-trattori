@@ -12,7 +12,7 @@ import pandas as pd
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QStackedWidget,
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 
 from ui.card_grid import CardGrid
 from ui.result_table import ResultTable
@@ -28,7 +28,10 @@ class ResultTab(QWidget):
     - Displays the number of results found
     - Shows an "empty state" message if no results
     - Automatically selects relevant info to display for each type
+    - For tractors: allows selection with checkboxes
     """
+    
+    tractors_selected = Signal(list)  # Emitted with list of selected tractor rows
 
     def __init__(self, is_tractor: bool = True, parent=None):
         super().__init__(parent)
@@ -41,6 +44,8 @@ class ResultTab(QWidget):
         """
         self._is_tractor = is_tractor
         self._accent = "#1f3d1a" if is_tractor else "#8b6340"
+        self._selected_tractors = []  # Track selected tractors
+        self._current_data = pd.DataFrame()  # Store current displayed data
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -92,6 +97,22 @@ class ResultTab(QWidget):
         root.addWidget(self.empty_label)
         self.empty_label.hide()
 
+    def clear(self):
+        """
+        Clear all results and reset to the initial state.
+        
+        This is called when the user clicks the Reset button.
+        It clears cards, resets the view to card view, and shows the initial message.
+        """
+        self.card_grid.set_cards([])
+        self.table_view.load(pd.DataFrame())
+        self.stack.hide()
+        self.empty_label.show()
+        self.count_label.setText("Imposta i filtri e clicca Cerca")
+        self.btn_cards.setChecked(True)
+        self.btn_table.setChecked(False)
+        self.stack.setCurrentIndex(0)
+
     def _switch(self, idx: int):
         """
         Switch between card and table views.
@@ -126,16 +147,47 @@ class ResultTab(QWidget):
         self.empty_label.hide()
         n = len(df)
         self.count_label.setText(f"{n} risultat{'o' if n == 1 else 'i'}")
+        
+        # Store current data for later reference (e.g., when getting selected tractors)
+        self._current_data = df.reset_index(drop=True)
+        self._selected_tractors = []
 
         # Build cards
         cards = []
-        for _, row in df.iterrows():
+        for idx, (_, row) in enumerate(df.iterrows()):
             title, brand, tags, score, link = self._extract(row)
-            cards.append(ResultCard(title, brand, tags, score, link, self._accent))
+            # Make tractors selectable
+            card = ResultCard(title, brand, tags, score, link, self._accent,
+                            selectable=self._is_tractor)
+            if self._is_tractor and card.checkbox:
+                # Connect checkbox to track selection
+                card.checkbox.stateChanged.connect(
+                    lambda checked, i=idx: self._on_tractor_toggled(i, checked)
+                )
+            cards.append(card)
         self.card_grid.set_cards(cards)
 
         # Load table
         self.table_view.load(df)
+    
+    def _on_tractor_toggled(self, row_idx: int, checked: bool):
+        """
+        Handle when a tractor card checkbox is toggled.
+        
+        Limit to 2 selections and emit signal when tractors are selected.
+        """
+        if checked:
+            # Limit to 2 tractors
+            if len(self._selected_tractors) < 2:
+                self._selected_tractors.append(row_idx)
+        else:
+            # Remove from selection
+            if row_idx in self._selected_tractors:
+                self._selected_tractors.remove(row_idx)
+        
+        # Emit signal with selected tractor rows
+        selected_rows = [self._current_data.iloc[idx] for idx in self._selected_tractors]
+        self.tractors_selected.emit(selected_rows)
 
     def _extract(self, row: pd.Series):
         """

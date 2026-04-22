@@ -3,7 +3,11 @@ ui/main_window.py — The main application window
 
 This is what you see when you open the app. It has two main areas:
   1. Left side: Filter panel where you set your search criteria
-  2. Right side: Results panel that shows matching tractors and machines
+  2. Right side: Results panel showing tractors and machines side-by-side
+
+The workflow:
+1. User sets filters → clicks Search → tractors shown on left
+2. User clicks "cerca macchine" → compatible machines shown on right
 """
 
 from __future__ import annotations
@@ -20,7 +24,7 @@ from ui.styles import APP_STYLE
 from ui.filter_panel import FilterPanel
 from ui.results_panel import ResultsPanel
 from ui.match_worker import MatchWorker
-from logic.matcher import run_matching
+from logic.filter import filter_machines_by_tractors
 
 
 # ── Main window ───────────────────────────────────────────────────────────────
@@ -31,24 +35,26 @@ class MainWindow(QMainWindow):
     
     This window contains:
     - A filter panel on the left (where you set your search criteria)
-    - A results panel on the right (where search results are shown)
+    - A results panel on the right (split view: tractors left, machines right)
     - A status bar at the bottom (showing current status messages)
     
     When you adjust filters and click Search, this window coordinates
-    the search and displays the results.
+    the search and displays the tractors. Then when you click "cerca macchine",
+    it filters and displays compatible machines.
     """
     
     def __init__(self, tractor_db: TractorDatabase, machine_db: MachineDatabase, on_close=None):
         super().__init__()
-        # Store database objects for potential future use
+        # Store database objects
         self._tractor_db = tractor_db
         self._machine_db = machine_db
         
-        # Extract DataFrames for the UI and matcher
+        # Extract DataFrames for the UI
         self._db_t = tractor_db.dataframe
         self._db_m = machine_db.dataframe
         self._thread = None
         self._on_close = on_close
+        self._current_filters = {}  # Store current filters for machine filtering
 
         self.setWindowTitle("AgriSelector 🚜")
         self.resize(1280, 820)
@@ -63,7 +69,7 @@ class MainWindow(QMainWindow):
         
         This creates:
         1. A left sidebar with the filter panel
-        2. A right panel for results
+        2. A right panel with split view (tractors left, machines right)
         3. A status bar at the bottom
         4. Proper sizing and spacing
         """
@@ -83,6 +89,8 @@ class MainWindow(QMainWindow):
         splitter.addWidget(self.filter_panel)
 
         self.results_panel = ResultsPanel()
+        # Connect "cerca macchine" button to filter machines
+        self.results_panel.cerca_macchine_clicked.connect(self._on_cerca_macchine)
         splitter.addWidget(self.results_panel)
 
         splitter.setStretchFactor(0, 0)
@@ -105,38 +113,69 @@ class MainWindow(QMainWindow):
         Handle when the user clicks the Search button.
         
         This method:
-        1. Shows "Searching..." in the status bar
-        2. Disables the Search button (so you can't click it again while searching)
-        3. Creates a background worker to run the search
-        4. Waits for results without freezing the window
+        1. Stores the filters for later machine filtering
+        2. Shows "Searching..." in the status bar
+        3. Disables the Search button (so you can't click it while searching)
+        4. Creates a background worker to filter tractors
+        5. Waits for results without freezing the window
         """
+        self._current_filters = filters
         self.statusBar().showMessage("Ricerca in corso…")
         self.filter_panel.btn_search.setEnabled(False)
 
         self._thread = QThread()
-        self._worker = MatchWorker(self._db_t, self._db_m, filters)
+        self._worker = MatchWorker(self._db_t, filters)
         self._worker.moveToThread(self._thread)
         self._thread.started.connect(self._worker.run)
-        self._worker.finished.connect(self._on_results)
+        self._worker.finished.connect(self._on_tractors_filtered)
         self._worker.finished.connect(self._thread.quit)
         self._thread.start()
 
-    def _on_results(self, results: dict):
+    def _on_tractors_filtered(self, filtered_tractors: pd.DataFrame):
         """
-        Display the search results when they're ready.
+        Display the filtered tractors when the search is complete.
         
         This method:
-        1. Shows the matching tractors and machines in the results panel
-        2. Re-enables the Search button so you can search again
-        3. Updates the status bar to show how many matches were found
+        1. Shows the matching tractors in the left panel
+        2. Re-enables the Search button
+        3. Updates the status bar with the tractor count
+        4. Clears the machines panel
         """
-        self.results_panel.load_results(results)
+        self.results_panel.load_tractors(filtered_tractors)
+        self.results_panel.load_machines(pd.DataFrame())  # Clear machines initially
         self.filter_panel.btn_search.setEnabled(True)
 
-        n_t = len(results.get("trattori", []))
-        n_m = len(results.get("macchine", []))
+        n_t = len(filtered_tractors)
         self.statusBar().showMessage(
-            f"Trovati {n_t} trattori e {n_m} macchine compatibili."
+            f"Trovati {n_t} trattori. Clicca 'cerca macchine' per visualizzare le macchine compatibili."
+        )
+
+    def _on_cerca_macchine(self, tractors_df: pd.DataFrame):
+        """
+        Handle when the user clicks "cerca macchine" button.
+        
+        Filters machines based on compatibility with the shown tractors.
+        
+        Args:
+            tractors_df: DataFrame of currently shown tractors (all filtered tractors)
+        """
+        self.statusBar().showMessage("Filtraggio macchine compatibili…")
+        
+        # Extract operation types from current filters if available
+        operations = self._current_filters.get("operation_type")
+        
+        # Filter machines by tractor compatibility
+        compatible_machines = filter_machines_by_tractors(
+            self._db_m,
+            tractors_df,
+            selected_operations=operations
+        )
+        
+        self.results_panel.load_machines(compatible_machines)
+        
+        n_m = len(compatible_machines)
+        self.statusBar().showMessage(
+            f"Trovate {n_m} macchine compatibili con i {len(tractors_df)} trattori selezionati."
         )
 
     def _on_reset(self):
@@ -145,7 +184,8 @@ class MainWindow(QMainWindow):
         
         This clears all results and returns to the welcome state.
         """
-        self.results_panel._show_welcome()
+        self.results_panel.clear()
+        self._current_filters = {}
         self.statusBar().showMessage("Pronto — imposta i filtri e clicca Cerca.")
 
     def closeEvent(self, event):

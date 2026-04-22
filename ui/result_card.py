@@ -11,9 +11,9 @@ Each result (tractor or machine) is displayed as an attractive card showing:
 
 import webbrowser
 from PySide6.QtWidgets import (
-    QFrame, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
+    QFrame, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QCheckBox,
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 
 
 class ResultCard(QFrame):
@@ -29,10 +29,12 @@ class ResultCard(QFrame):
     
     Has a colored accent bar on the left (green for tractors, brown for machines).
     """
+    
+    selection_changed = Signal(bool)  # Emitted when checkbox state changes (for tractors)
 
     def __init__(self, title: str, brand: str, tags: list[tuple[str, bool]],
                  score: int | None, link: str | None, accent: str = "#1f3d1a",
-                 parent=None):
+                 selectable: bool = False, parent=None):
         super().__init__(parent)
         """
         Create a result card.
@@ -44,6 +46,7 @@ class ResultCard(QFrame):
             score: Match percentage (0-100) or None
             link: URL to technical sheet or None
             accent: Color code for the left accent bar
+            selectable: If True, add a checkbox for selection (for tractors)
         """
         self.setObjectName("card")
         self.setFrameShape(QFrame.Shape.StyledPanel)
@@ -59,6 +62,16 @@ class ResultCard(QFrame):
 
         # Title row
         title_row = QHBoxLayout()
+        
+        # Add checkbox if selectable
+        if selectable:
+            self.checkbox = QCheckBox()
+            self.checkbox.setFixedWidth(24)
+            self.checkbox.stateChanged.connect(lambda: self.selection_changed.emit(self.checkbox.isChecked()))
+            title_row.addWidget(self.checkbox)
+        else:
+            self.checkbox = None
+        
         title_lbl = QLabel(title)
         title_lbl.setObjectName("card_title")
         font = title_lbl.font()

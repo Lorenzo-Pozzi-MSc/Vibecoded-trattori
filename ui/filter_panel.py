@@ -170,7 +170,7 @@ class FilterPanel(QFrame):
         self.btn_search.clicked.connect(self._emit_search)
         lay.addWidget(self.btn_search)
 
-        self.btn_reset = QPushButton("↺  Reset filtri")
+        self.btn_reset = QPushButton("↺  Reset")
         self.btn_reset.setObjectName("reset_btn")
         self.btn_reset.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_reset.clicked.connect(self._reset)
