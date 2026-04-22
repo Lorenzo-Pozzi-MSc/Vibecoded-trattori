@@ -11,6 +11,7 @@ from typing import Optional
 import pandas as pd
 
 
+
 @dataclass
 class Tractor:
     """
@@ -25,8 +26,8 @@ class Tractor:
     brand: str = ""
     """The manufacturer/brand name"""
     
-    traction_type: str = ""
-    """Type of traction (2WD, 4WD, tracks, etc.)"""
+    traction_type: list[str] = field(default_factory=list)
+    """Types of traction available (e.g. ['2WD', '4WD'])"""
     
     power_min_cv: Optional[float] = None
     """Minimum power in CV (cavalli vapore / horsepower)"""
@@ -37,11 +38,11 @@ class Tractor:
     turning_radius_m: Optional[float] = None
     """Minimum turning radius in meters"""
     
-    attachment_categories: str = ""
-    """Available 3-point hitch categories (e.g., '1, 2, 3')"""
-    
-    pto_speeds: str = ""
-    """Available PTO (Power Take-Off) speeds"""
+    attachment_categories: list[str] = field(default_factory=list)
+    """Available 3-point hitch categories (e.g. ['1', '2', '3'])"""
+
+    pto_speeds: list[str] = field(default_factory=list)
+    """Available PTO speeds (e.g. ['540', '1000'])"""
     
     link: Optional[str] = None
     """URL to technical sheet or product page"""
@@ -143,8 +144,8 @@ class TractorDatabase:
         return [t for t in self.tractors if t.brand.lower() == brand.lower()]
     
     def get_by_traction_type(self, traction_type: str) -> list[Tractor]:
-        """Get all tractors with a specific traction type."""
-        return [t for t in self.tractors if traction_type.lower() in t.traction_type.lower()]
+        """Get all tractors that include a specific traction type."""
+        return [t for t in self.tractors if traction_type.lower() in [tt.lower() for tt in t.traction_type]]
 
 
 class MachineDatabase:

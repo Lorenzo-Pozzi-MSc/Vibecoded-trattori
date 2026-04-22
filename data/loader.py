@@ -113,6 +113,14 @@ def _string_or_empty(val) -> str:
     return str(val).strip()
 
 
+def _list_from_str(val) -> list[str]:
+    """Split a cell into a list, handling ; , / as separators (same as unique_sorted)."""
+    import re
+    if pd.isna(val) or str(val).strip().lower() in ("nan", "na", ""):
+        return []
+    return [v.strip() for v in re.split(r"[;,/]", str(val)) if v.strip()]
+
+
 def _create_tractors(df: pd.DataFrame) -> list[Tractor]:
     """
     Create Tractor model instances from a DataFrame.
@@ -124,12 +132,12 @@ def _create_tractors(df: pd.DataFrame) -> list[Tractor]:
         tractor = Tractor(
             name=_string_or_empty(row.get("Nome serie/modello", "")),
             brand=_string_or_empty(row.get("Marchio", "")),
-            traction_type=_string_or_empty(row.get("Trazione", "")),
+            traction_type=_list_from_str(row.get("Trazione", "")),
             power_min_cv=_float_or_none(row.get("Pot. min (CV)")),
             power_max_cv=_float_or_none(row.get("Pot. max (CV)")),
             turning_radius_m=_float_or_none(row.get("Raggio di Sterzata min (m)")),
-            attachment_categories=_string_or_empty(row.get("Categorie attacco a 3 punti disponibili", "")),
-            pto_speeds=_string_or_empty(row.get("Regimi PDP disponibili", "")),
+            attachment_categories=_list_from_str(row.get("Categorie attacco a 3 punti disponibili", "")),
+            pto_speeds=_list_from_str(row.get("Regimi PDP disponibili", "")),
             link=_string_or_empty(row.get("link", "")),
             raw_data=row.to_dict(),
         )

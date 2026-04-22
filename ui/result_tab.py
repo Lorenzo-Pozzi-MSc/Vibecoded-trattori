@@ -8,12 +8,15 @@ Each result tab can display search results in two different ways:
 You can switch between these views with buttons at the top of the tab.
 """
 
+from __future__ import annotations
 import pandas as pd
+
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QStackedWidget,
 )
 from PySide6.QtCore import Qt, Signal
 
+from data.models import Tractor, Machine
 from ui.card_grid import CardGrid
 from ui.result_table import ResultTable
 from ui.result_card import ResultCard
@@ -22,30 +25,23 @@ from ui.result_card import ResultCard
 class ResultTab(QWidget):
     """
     A single results tab displaying tractors or machines.
-    
+
     Features:
-    - Shows results as cards or table (you can toggle with buttons)
+    - Shows results as cards or table (toggle with buttons)
     - Displays the number of results found
     - Shows an "empty state" message if no results
     - Automatically selects relevant info to display for each type
-    - For tractors: allows selection with checkboxes
+    - For tractors: allows selection with checkboxes (max 2)
     """
-    
-    tractors_selected = Signal(list)  # Emitted with list of selected tractor rows
+
+    tractors_selected = Signal(list)  # emits list[Tractor]
 
     def __init__(self, is_tractor: bool = True, parent=None):
         super().__init__(parent)
-        """
-        Create a results tab.
-        
-        Args:
-            is_tractor: True if this tab is for tractors, False if for machines
-                       This affects which fields are displayed and the accent color
-        """
         self._is_tractor = is_tractor
         self._accent = "#1f3d1a" if is_tractor else "#8b6340"
-        self._selected_tractors = []  # Track selected tractors
-        self._current_data = pd.DataFrame()  # Store current displayed data
+        self._selected_indices: list[int] = []
+        self._current_items: list = []
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -63,7 +59,6 @@ class ResultTab(QWidget):
         hlay.addWidget(self.count_label)
         hlay.addStretch()
 
-        # View toggle
         self.btn_cards = QPushButton("Schede")
         self.btn_table = QPushButton("Tabella")
         for btn in (self.btn_cards, self.btn_table):
@@ -98,12 +93,6 @@ class ResultTab(QWidget):
         self.empty_label.hide()
 
     def clear(self):
-        """
-        Clear all results and reset to the initial state.
-        
-        This is called when the user clicks the Reset button.
-        It clears cards, resets the view to card view, and shows the initial message.
-        """
         self.card_grid.set_cards([])
         self.table_view.load(pd.DataFrame())
         self.stack.hide()
@@ -112,32 +101,22 @@ class ResultTab(QWidget):
         self.btn_cards.setChecked(True)
         self.btn_table.setChecked(False)
         self.stack.setCurrentIndex(0)
+        self._current_items = []
+        self._selected_indices = []
 
     def _switch(self, idx: int):
-        """
-        Switch between card and table views.
-        
-        Args:
-            idx: 0 for card view, 1 for table view
-        """
         self.stack.setCurrentIndex(idx)
         self.btn_cards.setChecked(idx == 0)
         self.btn_table.setChecked(idx == 1)
 
-    def load(self, df: pd.DataFrame):
+    def load(self, items: list):
         """
-        Display search results from a data table.
-        
-        This method:
-        1. Shows the result count
-        2. Creates cards from each result
-        3. Loads the data into the table view
-        4. Shows empty state if no results
-        
+        Display results from a list of Tractor or Machine model instances.
+
         Args:
-            df: A pandas DataFrame containing the search results
+            items: list[Tractor] or list[Machine]
         """
-        if df.empty:
+        if not items:
             self.stack.hide()
             self.empty_label.show()
             self.count_label.setText("0 risultati")
@@ -145,91 +124,74 @@ class ResultTab(QWidget):
 
         self.stack.show()
         self.empty_label.hide()
-        n = len(df)
+        n = len(items)
         self.count_label.setText(f"{n} risultat{'o' if n == 1 else 'i'}")
-        
-        # Store current data for later reference (e.g., when getting selected tractors)
-        self._current_data = df.reset_index(drop=True)
-        self._selected_tractors = []
+
+        self._current_items = items
+        self._selected_indices = []
 
         # Build cards
         cards = []
-        for idx, (_, row) in enumerate(df.iterrows()):
-            title, brand, tags, score, link = self._extract(row)
-            # Make tractors selectable
+        for idx, item in enumerate(items):
+            title, brand, tags, score, link = self._extract(item)
             card = ResultCard(title, brand, tags, score, link, self._accent,
-                            selectable=self._is_tractor)
+                              selectable=self._is_tractor)
             if self._is_tractor and card.checkbox:
-                # Connect checkbox to track selection
                 card.checkbox.stateChanged.connect(
                     lambda checked, i=idx: self._on_tractor_toggled(i, checked)
                 )
             cards.append(card)
         self.card_grid.set_cards(cards)
 
-        # Load table
-        self.table_view.load(df)
-    
-    def _on_tractor_toggled(self, row_idx: int, checked: bool):
-        """
-        Handle when a tractor card checkbox is toggled.
-        
-        Limit to 2 selections and emit signal when tractors are selected.
-        """
+        # Rebuild DataFrame from raw_data for the table view
+        self.table_view.load(pd.DataFrame([item.raw_data for item in items]))
+
+    def _on_tractor_toggled(self, idx: int, checked: bool):
         if checked:
-            # Limit to 2 tractors
-            if len(self._selected_tractors) < 2:
-                self._selected_tractors.append(row_idx)
+            if len(self._selected_indices) < 2:
+                self._selected_indices.append(idx)
         else:
-            # Remove from selection
-            if row_idx in self._selected_tractors:
-                self._selected_tractors.remove(row_idx)
-        
-        # Emit signal with selected tractor rows
-        selected_rows = [self._current_data.iloc[idx] for idx in self._selected_tractors]
-        self.tractors_selected.emit(selected_rows)
+            if idx in self._selected_indices:
+                self._selected_indices.remove(idx)
+        selected = [self._current_items[i] for i in self._selected_indices]
+        self.tractors_selected.emit(selected)
 
-    def _extract(self, row: pd.Series):
+    def _extract(self, item) -> tuple:
         """
-        Pull out the important fields from a result row to display.
-        
-        This method selects which database columns to show and formats them nicely
-        for display on a result card. Different fields are shown for tractors vs machines.
-        
-        Args:
-            row: A single result row from the database
-        
+        Pull the display fields out of a Tractor or Machine model instance.
+
         Returns:
-            A tuple of (title, brand, tags, score, link) ready for display
+            (title, brand, tags, score, link)
         """
-        score_val = row.get("_score")
-        score = int(score_val) if pd.notna(score_val) else None
-
-        def v(col): return row.get(col, "")
-        def ok(col): return str(v(col)) not in ("", "nan", "<NA>")
-
         if self._is_tractor:
-            title = str(v("Nome serie/modello") or "—")
-            brand = str(v("Marchio")) if ok("Marchio") else ""
+            t: Tractor = item
+            title = t.name or "—"
+            brand = t.brand
             tags = []
-            if ok("Trazione"):        tags.append((f"🔧 {v('Trazione')}", False))
-            if ok("Pot. min (CV)"):   tags.append((f"⚡ {v('Pot. min (CV)')}–{v('Pot. max (CV)')} CV", False))
-            if ok("Categorie attacco a 3 punti disponibili"):
-                tags.append((f"↕ Cat. {v('Categorie attacco a 3 punti disponibili')}", True))
-            if ok("Regimi PDP disponibili"):
-                tags.append((f"PDP: {v('Regimi PDP disponibili')}", True))
-            link = str(v("link")) if ok("link") else None
+            if t.traction_type:
+                tags.append((f"🔧 {', '.join(t.traction_type)}", False))
+            if t.power_min_cv is not None:
+                tags.append((f"⚡ {t.power_min_cv}–{t.power_max_cv} CV", False))
+            if t.attachment_categories:
+                tags.append((f"↕ Cat. {', '.join(t.attachment_categories)}", True))
+            if t.pto_speeds:
+                tags.append((f"PDP: {', '.join(t.pto_speeds)}", True))
+            link = t.link or None
         else:
-            title = str(v("Nome") or "—")
-            parts = [str(v(c)) for c in ("Produttore", "Tipo di operazione") if ok(c)]
-            brand = " · ".join(parts)
+            m: Machine = item
+            title = m.name or "—"
+            brand = " · ".join(filter(None, [m.manufacturer, m.operation_type]))
             tags = []
-            if ok("Tipo di macchina"):             tags.append((f"🔩 {v('Tipo di macchina')}", False))
-            if ok("Potenza minima richiesta HP"):  tags.append((f"⚡ {v('Potenza minima richiesta HP')}–{v('Potenza massima consigliata HP')} HP", False))
-            if ok("Larghezza di lavoro min"):      tags.append((f"↔ {v('Larghezza di lavoro min')}–{v('Larghezza di lavoro max')} m", False))
-            if ok("Attacco al trattore"):          tags.append((f"↕ {v('Attacco al trattore')}", True))
-            rip = str(v("Ripiegabile")).strip().lower()
-            if rip in ("sì", "si", "yes", "true", "1"): tags.append(("📐 Ripiegabile", True))
-            link = str(v("URL scheda tecnica produttore/fonte")) if ok("URL scheda tecnica produttore/fonte") else None
+            if m.machine_type:
+                tags.append((f"🔩 {m.machine_type}", False))
+            if m.min_power_required_hp is not None:
+                tags.append((f"⚡ {m.min_power_required_hp}–{m.max_power_recommended_hp} HP", False))
+            if m.min_work_width_m is not None:
+                tags.append((f"↔ {m.min_work_width_m}–{m.max_work_width_m} m", False))
+            if m.attachment_type:
+                tags.append((f"↕ {m.attachment_type}", True))
+            if m.is_foldable:
+                tags.append(("📐 Ripiegabile", True))
+            link = m.technical_sheet_url or None
 
-        return title, brand, tags, score, link
+        return title, brand, tags, None, link

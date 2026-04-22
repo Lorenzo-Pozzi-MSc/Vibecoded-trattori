@@ -17,63 +17,37 @@ import webbrowser
 import pandas as pd
 
 from PySide6.QtWidgets import (
-    QWidget, QFrame, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QScrollArea, QDoubleSpinBox, QCheckBox,
+    QWidget, QFrame, QVBoxLayout, QHBoxLayout,
+    QPushButton, QScrollArea, QDoubleSpinBox, QLabel,
 )
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QFont
 
+from data.models import TractorDatabase, MachineDatabase
 from ui.range_slider import RangeSlider
-from ui.multi_select_list import MultiSelectList
 from ui.checkbox_list import CheckboxList
 from ui.helpers import unique_sorted, section_label, field_label
 
 
-# ── Main filter panel ─────────────────────────────────────────────────────────
-
 class FilterPanel(QFrame):
     """
     The left sidebar where you set search criteria.
-    
-    Contains controls for:
-    - Operation type (plowing, harvesting, etc.)
-    - Traction type (2WD, 4WD, tracks)
-    - Tractor power range
-    - Maximum working width
-    - Maximum turning radius
-    
-    When you click Search, it collects all your choices and sends them
-    to the matching engine.
+
+    Reads unique values from the typed database objects to populate
+    filter options with real choices from your data.
     """
-    
+
     search_requested = Signal(dict)
     reset_requested = Signal()
 
-    def __init__(self, db_trattori: pd.DataFrame, db_macchine: pd.DataFrame, parent=None):
+    def __init__(self, tractor_db: TractorDatabase, machine_db: MachineDatabase, parent=None):
         super().__init__(parent)
         self.setObjectName("sidebar")
         self.setFixedWidth(290)
-        self._db_t = db_trattori
-        self._db_m = db_macchine
-        """
-        Create the filter panel with all search options.
-        
-        Reads the tractor and machine databases to populate the filter options
-        with real choices from your data.
-        """
+        self._tractor_db = tractor_db
+        self._machine_db = machine_db
         self._build_ui()
 
     def _build_ui(self):
-        """
-        Construct all the visual controls in the filter panel.
-        
-        Creates and arranges:
-        - Section headers
-        - Checkboxes and dropdowns for filter options
-        - Search and Reset buttons
-        - A scroll area so everything fits even on small screens
-        """
-        # Outer layout holds a scroll area so it works on small screens
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(0)
@@ -103,22 +77,19 @@ class FilterPanel(QFrame):
 
         # ── 1. OPERATIONAL CONTEXT ────────────────────────────────────────
         lay.addWidget(section_label("Contesto operativo"))
-
         lay.addWidget(field_label("Tipo di operazione"))
-        op_opts = unique_sorted(self._db_m.get("Tipo di operazione", pd.Series()))
+        op_opts = unique_sorted(self._machine_db.dataframe.get("Tipo di operazione", pd.Series(dtype=str)))
         self.w_tipo_op = CheckboxList(op_opts)
         lay.addWidget(self.w_tipo_op)
 
         # ── 2. TRACTOR ────────────────────────────────────────────────────
         lay.addWidget(section_label("Trattore"))
 
-        # Trazione label with help tooltip
         trazione_label_lay = QHBoxLayout()
         trazione_label_lay.setContentsMargins(0, 0, 0, 0)
         trazione_label_lay.setSpacing(4)
         trazione_label_lay.addWidget(field_label("Trazione"))
-        
-        # Help icon - clickable to open link
+
         help_btn = QPushButton("?")
         help_btn.setObjectName("help_icon_btn")
         help_btn.setFixedSize(18, 18)
@@ -129,9 +100,10 @@ class FilterPanel(QFrame):
         )
         trazione_label_lay.addWidget(help_btn)
         trazione_label_lay.addStretch()
-        
         lay.addLayout(trazione_label_lay)
-        self.w_trazione = CheckboxList(unique_sorted(self._db_t.get("Trazione", pd.Series())))
+
+        traction_opts = unique_sorted(self._tractor_db.dataframe.get("Trazione", pd.Series(dtype=str)))
+        self.w_trazione = CheckboxList(traction_opts)
         lay.addWidget(self.w_trazione)
 
         lay.addWidget(field_label("Potenza (CV)"))
@@ -140,7 +112,6 @@ class FilterPanel(QFrame):
 
         # ── 3. DIMENSIONS ─────────────────────────────────────────────────
         lay.addWidget(section_label("Dimensioni di lavoro"))
-
 
         lay.addWidget(field_label("Ingombro larghezza max (m)"))
         self.w_ingombro = QDoubleSpinBox()
@@ -178,21 +149,13 @@ class FilterPanel(QFrame):
 
         lay.addStretch()
 
-    # ── Collect & emit ────────────────────────────────────────────────────────
-
     def _emit_search(self):
-        """
-        Collect all your filter choices and send them to the search engine.
-        
-        This gets called when you click the Search button.
-        It gathers all the values you've selected and sends them as a signal.
-        """
         filters = {
-            "tipo_operazione":  self.w_tipo_op.selected_values(),
-            "trazione":         self.w_trazione.selected_values(),
-            "potenza_range":    self.w_potenza.value(),
+            "tipo_operazione":    self.w_tipo_op.selected_values(),
+            "trazione":           self.w_trazione.selected_values(),
+            "potenza_range":      self.w_potenza.value(),
             "ingombro_larghezza": self.w_ingombro.value(),
-            "raggio_svolta":    self.w_raggio.value(),
+            "raggio_svolta":      self.w_raggio.value(),
         }
         self.search_requested.emit(filters)
 
