@@ -133,8 +133,8 @@ class ResultTab(QWidget):
         # Build cards
         cards = []
         for idx, item in enumerate(items):
-            title, brand, tags, score, link = self._extract(item)
-            card = ResultCard(title, brand, tags, score, link, self._accent,
+            title, brand, tags, link = self._extract(item)
+            card = ResultCard(title, brand, tags, link, self._accent,
                               selectable=self._is_tractor)
             if self._is_tractor and card.checkbox:
                 card.checkbox.stateChanged.connect(
@@ -161,21 +161,19 @@ class ResultTab(QWidget):
         Pull the display fields out of a Tractor or Machine model instance.
 
         Returns:
-            (title, brand, tags, score, link)
+            (title, brand, tags, link)
         """
         if self._is_tractor:
             t: Tractor = item
-            title = t.name or "—"
-            brand = t.brand
+            title = f"{t.brand} | {t.name}" if t.brand else (t.name or "—")
+            brand = ""
             tags = []
             if t.traction_type:
-                tags.append((f"🔧 {', '.join(t.traction_type)}", False))
+                tags.append((", ".join(t.traction_type), False))
             if t.power_min_cv is not None:
-                tags.append((f"⚡ {t.power_min_cv}–{t.power_max_cv} CV", False))
-            if t.attachment_categories:
-                tags.append((f"↕ Cat. {', '.join(t.attachment_categories)}", True))
+                tags.append((f"{round(t.power_min_cv)}–{round(t.power_max_cv)} CV", False))
             if t.pto_speeds:
-                tags.append((f"PDP: {', '.join(t.pto_speeds)}", True))
+                tags.append((", ".join(t.pto_speeds), False))
             link = t.link or None
         else:
             m: Machine = item
@@ -194,4 +192,4 @@ class ResultTab(QWidget):
                 tags.append(("📐 Ripiegabile", True))
             link = m.technical_sheet_url or None
 
-        return title, brand, tags, None, link
+        return title, brand, tags, link

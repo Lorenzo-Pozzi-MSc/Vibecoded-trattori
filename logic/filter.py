@@ -20,6 +20,7 @@ def filter_machines_by_tractors(
     machines: list[Machine],
     tractors: list[Tractor],
     selected_operations: Optional[list[str]] = None,
+    max_width: Optional[float] = None,
 ) -> list[Machine]:
     """
     Filter machines based on compatibility with selected tractors.
@@ -63,12 +64,18 @@ def filter_machines_by_tractors(
             continue
 
         # Criterion 3: Hitch compatibility
-        # Machine attachment_type must appear in at least one tractor's attachment_categories list
-        if not machine.attachment_type:
+        # Compare machine's hitch categories against tractor's available categories.
+        # "Categoria attacco a 3 punti" holds the numeric category (e.g. "2", "2;3"),
+        # while "Attacco al trattore" holds attachment style ("Portata posteriore", etc.)
+        # which is unrelated to the tractor's category list.
+        machine_hitch_raw = machine.raw_data.get("Categoria attacco a 3 punti")
+        if not machine_hitch_raw or str(machine_hitch_raw).strip().lower() in ("nan", "na", "", "non fornita"):
             hitch_compatible = True
         else:
-            hitch_compatible = any(
-                machine.attachment_type in tractor.attachment_categories
+            import re
+            machine_categories = [v.strip() for v in re.split(r"[;,/]", str(machine_hitch_raw)) if v.strip()]
+            hitch_compatible = not machine_categories or any(
+                any(cat in tractor.attachment_categories for cat in machine_categories)
                 for tractor in tractors
                 if tractor.attachment_categories
             )
@@ -89,6 +96,15 @@ def filter_machines_by_tractors(
 
         if not weight_compatible:
             continue
+
+        # Criterion 5: Width — pass if no data, otherwise ingombro_min or ingombro_max must be <= limit
+        if max_width is not None:
+            ing_min = _to_float(machine.raw_data.get("Ingombro larghezza min"))
+            ing_max = _to_float(machine.raw_data.get("Ingombro larghezza max"))
+            if ing_min is not None or ing_max is not None:
+                if not ((ing_min is not None and ing_min <= max_width) or
+                        (ing_max is not None and ing_max <= max_width)):
+                    continue
 
         compatible.append(machine)
 

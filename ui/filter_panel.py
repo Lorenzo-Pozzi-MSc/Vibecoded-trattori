@@ -111,26 +111,15 @@ class FilterPanel(QFrame):
         lay.addWidget(self.w_potenza)
 
         # ── 3. DIMENSIONS ─────────────────────────────────────────────────
-        lay.addWidget(section_label("Dimensioni di lavoro"))
+        lay.addWidget(section_label("Dimensioni"))
 
-        lay.addWidget(field_label("Ingombro larghezza max (m)"))
+        lay.addWidget(field_label("Larghezza max (m)"))
         self.w_ingombro = QDoubleSpinBox()
-        self.w_ingombro.setRange(0, 6)
+        self.w_ingombro.setRange(0, 15)
         self.w_ingombro.setSingleStep(0.1)
-        self.w_ingombro.setValue(3.0)
+        self.w_ingombro.setValue(5.0)
         self.w_ingombro.setSuffix(" m")
         lay.addWidget(self.w_ingombro)
-
-        # ── 4. FIELD ──────────────────────────────────────────────────────
-        lay.addWidget(section_label("Campo"))
-
-        lay.addWidget(field_label("Raggio di svolta max (m)"))
-        self.w_raggio = QDoubleSpinBox()
-        self.w_raggio.setRange(1, 20)
-        self.w_raggio.setSingleStep(0.5)
-        self.w_raggio.setValue(8.0)
-        self.w_raggio.setSuffix(" m")
-        lay.addWidget(self.w_raggio)
 
         # ── Buttons ───────────────────────────────────────────────────────
         lay.addSpacing(12)
@@ -155,7 +144,6 @@ class FilterPanel(QFrame):
             "trazione":           self.w_trazione.selected_values(),
             "potenza_range":      self.w_potenza.value(),
             "ingombro_larghezza": self.w_ingombro.value(),
-            "raggio_svolta":      self.w_raggio.value(),
         }
         self.search_requested.emit(filters)
 
@@ -163,6 +151,5 @@ class FilterPanel(QFrame):
         self.w_tipo_op.clear_selection()
         self.w_trazione.clear_selection()
         self.w_potenza.reset(40, 200)
-        self.w_ingombro.setValue(3.0)
-        self.w_raggio.setValue(8.0)
+        self.w_ingombro.setValue(5.0)
         self.reset_requested.emit()

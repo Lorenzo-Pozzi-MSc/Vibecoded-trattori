@@ -33,7 +33,7 @@ class ResultCard(QFrame):
     selection_changed = Signal(bool)  # Emitted when checkbox state changes (for tractors)
 
     def __init__(self, title: str, brand: str, tags: list[tuple[str, bool]],
-                 score: int | None, link: str | None, accent: str = "#1f3d1a",
+                 link: str | None, accent: str = "#1f3d1a",
                  selectable: bool = False, parent=None):
         super().__init__(parent)
         """
@@ -80,10 +80,6 @@ class ResultCard(QFrame):
         title_lbl.setFont(font)
         title_row.addWidget(title_lbl)
         title_row.addStretch()
-        if score is not None:
-            score_lbl = QLabel(f"✓ {score}%")
-            score_lbl.setObjectName("score_badge")
-            title_row.addWidget(score_lbl)
         lay.addLayout(title_row)
 
         # Brand

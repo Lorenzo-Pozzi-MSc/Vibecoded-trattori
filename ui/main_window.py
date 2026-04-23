@@ -109,12 +109,14 @@ class MainWindow(QMainWindow):
     def _on_cerca_macchine(self, tractors: list[Tractor]):
         self.statusBar().showMessage("Filtraggio macchine compatibili…")
 
-        operations = self._current_filters.get("tipo_operazione") or None
+        operations = self.filter_panel.w_tipo_op.selected_values() or None
+        max_width = self._current_filters.get("ingombro_larghezza")
 
         compatible = filter_machines_by_tractors(
             self._machine_db.machines,
             tractors,
             selected_operations=operations,
+            max_width=max_width,
         )
 
         self.results_panel.load_machines(compatible)

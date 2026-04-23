@@ -8,6 +8,7 @@ It runs in the background so the window stays responsive.
 from PySide6.QtCore import Signal, QObject
 
 from data.models import Tractor
+from logic.filter import _to_float
 
 
 class MatchWorker(QObject):
@@ -36,7 +37,6 @@ class MatchWorker(QObject):
         Supported filter keys:
         - trazione: list[str] — traction types to include
         - potenza_range: tuple(min_cv, max_cv)
-        - raggio_svolta: float — max turning radius in meters
         """
         result = list(tractors)
 
@@ -57,9 +57,16 @@ class MatchWorker(QObject):
             if max_cv is not None:
                 result = [t for t in result if t.power_max_cv is None or t.power_max_cv <= max_cv]
 
-        # Filter by turning radius — tractors with no radius data are not excluded
-        max_radius = filters.get("raggio_svolta")
-        if max_radius is not None:
-            result = [t for t in result if t.turning_radius_m is None or t.turning_radius_m <= max_radius]
+        # Filter by width — pass if no width data, otherwise w_min or w_max must be <= limit
+        max_width = filters.get("ingombro_larghezza")
+        if max_width is not None:
+            def _width_ok(t: Tractor) -> bool:
+                w_min = _to_float(t.raw_data.get("w min (m)"))
+                w_max = _to_float(t.raw_data.get("w max (m)"))
+                if w_min is None and w_max is None:
+                    return True
+                return (w_min is not None and w_min <= max_width) or \
+                       (w_max is not None and w_max <= max_width)
+            result = [t for t in result if _width_ok(t)]
 
         return result
