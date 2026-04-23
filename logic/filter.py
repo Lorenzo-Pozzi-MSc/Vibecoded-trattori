@@ -11,6 +11,7 @@ Compatibility criteria (hard constraints):
 """
 
 from __future__ import annotations
+import re
 from typing import Optional
 
 from data.models import Tractor, Machine
@@ -46,8 +47,12 @@ def filter_machines_by_tractors(
 
     for machine in machines:
         # Criterion 1: Operations filter
-        if selected_operations and machine.operation_type not in selected_operations:
-            continue
+        # Split machine.operation_type on the same separators unique_sorted uses,
+        # so "Fertilizzazione/semina a spaglio" matches either token.
+        if selected_operations:
+            machine_ops = [v.strip() for v in re.split(r"[;,/]", machine.operation_type) if v.strip()]
+            if not any(op in machine_ops for op in selected_operations):
+                continue
 
         # Criterion 2: Power compatibility (HP ≈ CV, treated as equivalent)
         cv_compatible = False
@@ -72,7 +77,6 @@ def filter_machines_by_tractors(
         if not machine_hitch_raw or str(machine_hitch_raw).strip().lower() in ("nan", "na", "", "non fornita"):
             hitch_compatible = True
         else:
-            import re
             machine_categories = [v.strip() for v in re.split(r"[;,/]", str(machine_hitch_raw)) if v.strip()]
             hitch_compatible = not machine_categories or any(
                 any(cat in tractor.attachment_categories for cat in machine_categories)
