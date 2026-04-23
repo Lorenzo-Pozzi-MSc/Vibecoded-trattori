@@ -80,25 +80,33 @@ class ResultsPanel(QWidget):
         lay.addWidget(splitter)
 
         self._current_tractors: list[Tractor] = []
+        self._selected_tractors: list[Tractor] = []
+        self.tab_trattori.tractors_selected.connect(self._on_tractors_selected)
         self._show_welcome()
 
     def _show_welcome(self):
         self.tab_trattori.count_label.setText("Imposta i filtri e clicca Cerca")
         self.tab_macchine.count_label.setText("")
 
+    def _on_tractors_selected(self, tractors: list[Tractor]):
+        self._selected_tractors = tractors
+
     def _on_cerca_clicked(self):
-        self.cerca_macchine_clicked.emit(self._current_tractors)
+        tractors = self._selected_tractors if self._selected_tractors else self._current_tractors
+        self.cerca_macchine_clicked.emit(tractors)
 
     def clear(self):
         self.tab_trattori.clear()
         self.tab_macchine.clear()
         self.btn_cerca_macchine.setEnabled(False)
         self._current_tractors = []
+        self._selected_tractors = []
         self._show_welcome()
 
     def load_tractors(self, tractors: list[Tractor]):
         self.tab_trattori.load(tractors)
         self._current_tractors = tractors
+        self._selected_tractors = []
         self.btn_cerca_macchine.setEnabled(bool(tractors))
 
     def load_machines(self, machines: list[Machine]):
